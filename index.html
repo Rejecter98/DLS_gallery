@@ -177,10 +177,11 @@ function parseCSV(text) {
 
 function toDirectUrl(raw) {
   raw = raw.trim();
-  let m = raw.match(/[?&]id=([^&\s]+)/);
-  if (m) return 'https://drive.google.com/uc?export=view&id=' + m[1];
-  m = raw.match(/\/file\/d\/([^\/\s]+)/);
-  if (m) return 'https://drive.google.com/uc?export=view&id=' + m[1];
+  let id = null;
+  let m = raw.match(/[?&]id=([^&\s,]+)/);
+  if (m) id = m[1];
+  if (!id) { m = raw.match(/\/file\/d\/([^\/\s]+)/); if (m) id = m[1]; }
+  if (id) return 'https://lh3.googleusercontent.com/d/' + id;
   return raw;
 }
 
