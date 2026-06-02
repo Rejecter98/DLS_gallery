@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>인증샷 피드</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500&family=Gmarket+Sans:wght@300;500&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --bg: #f7f5f2;
+  --surface: #ffffff;
+  --ink: #1a1a1a;
+  --muted: #888;
+  --border: rgba(0,0,0,0.08);
+  --accent: #2d6a4f;
+  --accent-light: #e8f4ee;
+  --tag: #d4a853;
+}
+body { background: var(--bg); color: var(--ink); font-family: 'Noto Sans KR', sans-serif; min-height: 100vh; }
+
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 100;
+  padding: 0 24px; height: 58px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.logo { font-family: 'Gmarket Sans', sans-serif; font-weight: 500; font-size: 18px; letter-spacing: -0.5px; color: var(--accent); }
+.header-right { display: flex; align-items: center; gap: 12px; }
+.live-pill { display: flex; align-items: center; gap: 5px; background: var(--accent-light); border-radius: 20px; padding: 4px 10px; font-size: 12px; color: var(--accent); font-weight: 500; }
+.live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: blink 2s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+.count-text { font-size: 12px; color: var(--muted); }
+
+.feed-header { text-align: center; padding: 28px 16px 16px; }
+.feed-header-title { font-family: 'Gmarket Sans', sans-serif; font-size: 15px; color: var(--muted); font-weight: 300; }
+
+.grid { columns: 3; column-gap: 4px; padding: 4px; max-width: 960px; margin: 0 auto; }
+@media (max-width: 600px) { .grid { columns: 2; } }
+
+.card { break-inside: avoid; margin-bottom: 4px; position: relative; overflow: hidden; border-radius: 4px; background: #ddd; cursor: pointer; animation: fadeUp .4s ease both; }
+.card img { display: block; width: 100%; transition: transform .4s ease; }
+.card:hover img { transform: scale(1.04); }
+.card-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.65) 0%, transparent 50%); opacity: 0; transition: opacity .3s; display: flex; flex-direction: column; justify-content: flex-end; padding: 12px; gap: 2px; }
+.card:hover .card-overlay { opacity: 1; }
+.card-name { font-size: 13px; font-weight: 500; color: #fff; }
+.card-class { font-size: 11px; color: rgba(255,255,255,.7); }
+.card-new { position: absolute; top: 8px; left: 8px; background: var(--tag); color: #fff; font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 20px; letter-spacing: .5px; }
+
+.lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.92); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
+.lightbox.open { display: flex; }
+.lb-inner { background: var(--surface); border-radius: 12px; overflow: hidden; max-width: 820px; width: 100%; display: flex; max-height: 90vh; }
+@media (max-width: 600px) { .lb-inner { flex-direction: column; } }
+.lb-img-wrap { flex: 1; background: #111; display: flex; align-items: center; justify-content: center; min-height: 280px; }
+.lb-img-wrap img { max-width: 100%; max-height: 85vh; object-fit: contain; display: block; }
+.lb-info { width: 260px; flex-shrink: 0; display: flex; flex-direction: column; overflow-y: auto; }
+@media (max-width: 600px) { .lb-info { width: 100%; } }
+.lb-profile { padding: 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.lb-avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--accent-light); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 500; color: var(--accent); flex-shrink: 0; }
+.lb-name { font-size: 14px; font-weight: 500; }
+.lb-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.lb-body { padding: 16px; flex: 1; }
+.lb-time { font-size: 11px; color: var(--muted); margin-top: 8px; }
+.lb-nav { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: center; gap: 8px; }
+.lb-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); cursor: pointer; transition: background .2s; }
+.lb-dot.active { background: var(--accent); }
+.lb-close { position: fixed; top: 16px; right: 20px; background: rgba(255,255,255,.12); border: none; color: #fff; width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; z-index: 201; transition: background .2s; }
+.lb-close:hover { background: rgba(255,255,255,.25); }
+
+.empty { text-align: center; padding: 80px 24px; color: var(--muted); font-size: 14px; }
+.spinner-wrap { text-align: center; padding: 80px; color: var(--muted); font-size: 13px; }
+.spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: 8px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(70px); background: var(--accent); color: #fff; font-size: 13px; font-weight: 500; padding: 10px 20px; border-radius: 24px; z-index: 300; transition: transform .4s cubic-bezier(.34,1.56,.64,1); white-space: nowrap; }
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+@keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo">인증샷 피드</span>
+  <div class="header-right">
+    <div class="live-pill">
+      <div class="live-dot" id="live-dot"></div>
+      <span id="status-label">불러오는 중</span>
+    </div>
+    <span class="count-text" id="count-label"></span>
+  </div>
+</header>
+
+<div class="feed-header">
+  <div class="feed-header-title">실시간 업데이트</div>
+</div>
+<div class="grid" id="grid">
+  <div class="spinner-wrap" style="column-span:all"><span class="spinner"></span>불러오는 중...</div>
+</div>
+
+<div class="lightbox" id="lightbox" onclick="closeLbBg(event)">
+  <button class="lb-close" onclick="closeLb()">✕</button>
+  <div class="lb-inner">
+    <div class="lb-img-wrap"><img id="lb-img" src="" alt=""/></div>
+    <div class="lb-info">
+      <div class="lb-profile">
+        <div class="lb-avatar" id="lb-avatar"></div>
+        <div>
+          <div class="lb-name" id="lb-name"></div>
+          <div class="lb-meta" id="lb-class"></div>
+        </div>
+      </div>
+      <div class="lb-body"><div class="lb-time" id="lb-time"></div></div>
+      <div class="lb-nav" id="lb-nav"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSnjhslxXBhKUjvVGi1AggCcqdm-bEBrkg30zwwYFI0K1E-zFn50rLEtXiPiJ6eOsj2t3MOIPTsygvh/pub?gid=1892642587&single=true&output=csv';
+
+let entries = [];
+let prevCount = 0;
+let lbEntry = null;
+let lbImgIdx = 0;
+
+async function fetchCSV(initial) {
+  try {
+    const res = await fetch(CSV_URL + '&_t=' + Date.now());
+    const text = await res.text();
+    const rows = parseCSV(text);
+    if (rows.length < 2) { showEmpty(); setStatus('live'); return; }
+
+    const data = rows.slice(1).reverse().map(r => ({
+      timestamp: r[0] || '',
+      class:     r[1] || '',
+      name:      r[2] || '',
+      images:    parseImages(r[3] || '')
+    })).filter(d => d.images.length > 0);
+
+    const newCount = data.length;
+    if (!initial && newCount > prevCount) {
+      showToast('새 인증샷 ' + (newCount - prevCount) + '장 추가됐어요 🎉');
+    }
+    prevCount = newCount;
+    entries = data;
+    renderGrid(initial);
+    setStatus('live');
+    document.getElementById('count-label').textContent = '총 ' + newCount + '건';
+  } catch(e) {
+    setStatus('error');
+    if (initial) {
+      document.getElementById('grid').innerHTML = '<div class="empty">데이터를 불러올 수 없습니다.<br><small style="font-size:12px;color:#aaa;margin-top:8px;display:block">시트 공개 설정을 확인해주세요.</small></div>';
+    }
+  }
+}
+
+function parseCSV(text) {
+  const rows = [];
+  for (const line of text.split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    const cols = []; let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') { inQ = !inQ; }
+      else if (ch === ',' && !inQ) { cols.push(cur); cur = ''; }
+      else { cur += ch; }
+    }
+    cols.push(cur);
+    rows.push(cols);
+  }
+  return rows;
+}
+
+function toDirectUrl(raw) {
+  raw = raw.trim();
+  let m = raw.match(/[?&]id=([^&\s]+)/);
+  if (m) return 'https://drive.google.com/uc?export=view&id=' + m[1];
+  m = raw.match(/\/file\/d\/([^\/\s]+)/);
+  if (m) return 'https://drive.google.com/uc?export=view&id=' + m[1];
+  return raw;
+}
+
+function parseImages(raw) {
+  return raw.split(',').map(s => toDirectUrl(s.trim())).filter(s => s.length > 10);
+}
+
+function renderGrid(initial) {
+  const grid = document.getElementById('grid');
+  if (!entries.length) { showEmpty(); return; }
+  grid.innerHTML = '';
+  entries.forEach((entry, ei) => {
+    entry.images.forEach((imgUrl, ii) => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.style.animationDelay = (ei * 0.04 + ii * 0.02) + 's';
+      const isNew = !initial && ei < 1;
+      card.innerHTML =
+        '<img src="' + esc(imgUrl) + '" alt="' + esc(entry.name) + '" loading="lazy" onerror="this.parentElement.style.display=\'none\'">' +
+        '<div class="card-overlay">' +
+          '<div class="card-name">' + esc(entry.name) + '</div>' +
+          '<div class="card-class">' + esc(entry.class) + '</div>' +
+        '</div>' +
+        (isNew ? '<div class="card-new">NEW</div>' : '');
+      card.onclick = () => openLb(ei, ii);
+      grid.appendChild(card);
+    });
+  });
+}
+
+function showEmpty() {
+  document.getElementById('grid').innerHTML = '<div class="empty">아직 제출된 인증샷이 없습니다 📷</div>';
+}
+
+function openLb(ei, ii) {
+  lbEntry = entries[ei]; lbImgIdx = ii; renderLb();
+  document.getElementById('lightbox').classList.add('open');
+}
+function renderLb() {
+  const e = lbEntry;
+  document.getElementById('lb-img').src = e.images[lbImgIdx];
+  document.getElementById('lb-avatar').textContent = e.name ? e.name.slice(0,2) : '?';
+  document.getElementById('lb-name').textContent = e.name || '익명';
+  document.getElementById('lb-class').textContent = e.class || '';
+  document.getElementById('lb-time').textContent = formatTime(e.timestamp);
+  const nav = document.getElementById('lb-nav');
+  if (e.images.length > 1) {
+    nav.style.display = 'flex';
+    nav.innerHTML = e.images.map((_, i) =>
+      '<div class="lb-dot ' + (i === lbImgIdx ? 'active' : '') + '" onclick="switchImg(' + i + ')"></div>'
+    ).join('');
+  } else { nav.style.display = 'none'; }
+}
+function switchImg(idx) { lbImgIdx = idx; renderLb(); }
+function closeLb() { document.getElementById('lightbox').classList.remove('open'); }
+function closeLbBg(e) { if (e.target === document.getElementById('lightbox')) closeLb(); }
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('lightbox').classList.contains('open')) return;
+  if (e.key === 'Escape') closeLb();
+  if (e.key === 'ArrowRight' && lbEntry && lbImgIdx < lbEntry.images.length - 1) switchImg(lbImgIdx + 1);
+  if (e.key === 'ArrowLeft' && lbEntry && lbImgIdx > 0) switchImg(lbImgIdx - 1);
+});
+
+function setStatus(s) {
+  const el = document.getElementById('status-label');
+  const dot = document.getElementById('live-dot');
+  if (s === 'live') { el.textContent = '실시간'; dot.style.background = 'var(--accent)'; }
+  else { el.textContent = '연결 오류'; dot.style.background = '#e05'; }
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+function formatTime(raw) {
+  if (!raw) return '';
+  try {
+    const d = new Date(raw.replace('오전','AM').replace('오후','PM'));
+    if (!isNaN(d)) return d.toLocaleDateString('ko-KR', {month:'long',day:'numeric'}) + ' · ' + d.toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit'});
+    return raw;
+  } catch(e) { return raw; }
+}
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+fetchCSV(true);
+setInterval(() => fetchCSV(false), 60000);
+</script>
+</body>
+</html>
